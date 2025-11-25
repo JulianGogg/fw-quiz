@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Hotspot-Editor — mit Share-Link & Quiz (fixed upload)</title>
+<title>Hotspot-Editor — mit Share-Link & Quiz</title>
 <style>
   :root{--accent:#2563eb}
   body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;padding:18px;background:#f7fafc;color:#0f172a}
@@ -30,8 +30,6 @@
   .modal h3{margin:0 0 8px}
   .row{display:flex;gap:8px;margin-top:8px}
   .danger{background:#fee2e2;color:#7f1d1d;border:1px solid #fecaca}
-
-  /* quiz view */
   #quizOnlyView{display:none}
   #quizImage{max-width:880px;max-height:600px;width:auto;height:auto}
   .message{padding:10px;border-radius:8px}
@@ -90,7 +88,6 @@
       </div>
     </div>
   </div>
-
   <!-- quiz view -->
   <div id="quizOnlyView" class="panel" style="margin-top:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -109,7 +106,7 @@
     <div id="quizFeedback" style="margin-top:8px"></div>
   </div>
 
-</div>
+</div> <!-- END .wrap -->
 
 <!-- Modal for editing hotspot -->
 <div id="editModal" class="modal-backdrop" style="display:none">
@@ -130,16 +127,17 @@
     </div>
   </div>
 </div>
-
 <script>
-/* Fixed upload/display: store images as data URLs (persistent) to ensure thumbnails and main image always show.
-   Keep share/quiz features. For large images you may hit localStorage size limits — consider Export JSON if needed.
+/* Fixed upload/display: store images as data URLs (persistent) to ensure thumbnails
+   and main image always show. Keeps share/quiz features.
 */
 
 const LS = 'hotspot_share_quiz_v1_fixed'
 let store = { images: [] }
 let selectedImageId = null
 let selectedHotId = null
+
+// drag/resize state
 let maybeDrag = null
 let dragging = null
 let resizing = null
@@ -175,58 +173,126 @@ const modalDelete = document.getElementById('modalDelete')
 const modalSave = document.getElementById('modalSave')
 
 // load/save
-function load(){ const s = localStorage.getItem(LS); if(!s){ store = {images:[]} ; return } try{ store = JSON.parse(s) }catch(e){ store = {images:[]} } }
-function save(){ try{ localStorage.setItem(LS, JSON.stringify(store)) }catch(e){ alert('Speichern fehlgeschlagen — vermutlich zu große Bilder für localStorage. Verwende Export/Share mit kleineren Bildern.') } }
-load(); renderImageList()
+function load(){
+  const s = localStorage.getItem(LS)
+  if(!s){ store = {images:[]} ; return }
+  try{ store = JSON.parse(s) }catch(e){ store = {images:[]} }
+}
+function save(){
+  try{
+    localStorage.setItem(LS, JSON.stringify(store))
+  }catch(e){
+    alert('Speichern fehlgeschlagen — vermutlich zu große Bilder für localStorage.')
+  }
+}
+load();
+renderImageList()
 
 function genId(p='id'){ return p+'_'+Math.random().toString(36).slice(2,9) }
-function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
-function fileToDataURL(file){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file) }) }
+function escapeHtml(s){
+  return String(s||'')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+}
+function fileToDataURL(file){
+  return new Promise(res=>{
+    const r=new FileReader()
+    r.onload=()=>res(r.result)
+    r.readAsDataURL(file)
+  })
+}
 
-// upload: convert to dataURL (persistent) — more reliable across reloads
+// upload handler
 fileInput.addEventListener('change', async ev=>{
   const files = Array.from(ev.target.files || [])
   if(files.length===0) return
   for(const f of files){
     try{
       const data = await fileToDataURL(f)
-      store.images.push({ id: genId('img'), name: f.name, data, hotspots: [] })
+      store.images.push({
+        id: genId('img'),
+        name: f.name,
+        data,
+        hotspots: []
+      })
     }catch(e){ console.error('fileToDataURL failed', e) }
   }
-  save(); renderImageList(); fileInput.value = ''
+  save()
+  renderImageList()
+  fileInput.value = ''
 })
 
-function renderImageList(){ imageList.innerHTML = ''
-  if(store.images.length===0){ imageList.innerHTML = '<div class="muted" style="margin-top:8px">Noch keine Bilder hochgeladen</div>'; return }
+function renderImageList(){
+  imageList.innerHTML = ''
+  if(store.images.length===0){
+    imageList.innerHTML = '<div class="muted" style="margin-top:8px">Noch keine Bilder hochgeladen</div>'
+    return
+  }
   store.images.forEach(img=>{
-    const d = document.createElement('div'); d.className='thumb'
-    d.innerHTML = `<img src="${img.data}" alt="${escapeHtml(img.name)}"><div style="flex:1"><strong>${escapeHtml(img.name)}</strong><div class=\"muted\">${img.hotspots.length} Hotspots</div></div>`
+    const d = document.createElement('div')
+    d.className='thumb'
+    d.innerHTML = `
+      <img src="${img.data}">
+      <div style="flex:1">
+        <strong>${escapeHtml(img.name)}</strong>
+        <div class="muted">${img.hotspots.length} Hotspots</div>
+      </div>`
     d.addEventListener('click', ()=> selectImage(img.id))
     imageList.appendChild(d)
-  })
+  });
 }
 
-function selectImage(id){ selectedImageId = id; selectedHotId = null; const img = store.images.find(x=>x.id===id); if(!img) return; mainImage.src = img.data; imageName.value = img.name || ''; mainImage.onload = ()=> renderHotspots(); if(mainImage.complete) renderHotspots() }
+function selectImage(id){
+  selectedImageId = id
+  selectedHotId = null
+  const img = store.images.find(x=>x.id===id)
+  if(!img) return
+  mainImage.src = img.data
+  imageName.value = img.name || ''
+  mainImage.onload = ()=> renderHotspots()
+  if(mainImage.complete) renderHotspots()
+}
 
-btnSaveName.addEventListener('click', ()=>{ if(!selectedImageId) return alert('Kein Bild ausgewählt'); const img = store.images.find(x=>x.id===selectedImageId); img.name = imageName.value || img.name; save(); renderImageList(); alert('Bildname gespeichert') })
+btnSaveName.addEventListener('click', ()=>{
+  if(!selectedImageId) return alert('Kein Bild ausgewählt')
+  const img = store.images.find(x=>x.id===selectedImageId)
+  img.name = imageName.value || img.name
+  save()
+  renderImageList()
+  alert('Bildname gespeichert')
+})
 
-btnDeleteImage.addEventListener('click', ()=>{ if(!selectedImageId) return alert('Kein Bild ausgewählt'); if(!confirm('Bild löschen?')) return; store.images = store.images.filter(x=>x.id!==selectedImageId); selectedImageId=null; save(); renderImageList(); mainImage.src=''; })
-
+btnDeleteImage.addEventListener('click', ()=>{
+  if(!selectedImageId) return alert('Kein Bild ausgewählt')
+  if(!confirm('Bild löschen?')) return
+  store.images = store.images.filter(x=>x.id!==selectedImageId)
+  selectedImageId=null
+  save()
+  renderImageList()
+  mainImage.src=''
+})
 // create hotspot on click
 mainImage.addEventListener('click', ev=>{
   if(!selectedImageId) return
   if(dragging || resizing) return
-  const rect = mainImage.getBoundingClientRect(); const x = ev.clientX - rect.left; const y = ev.clientY - rect.top
+  const rect = mainImage.getBoundingClientRect()
+  const x = ev.clientX - rect.left
+  const y = ev.clientY - rect.top
   const img = store.images.find(x=>x.id===selectedImageId)
   const rpx = Math.max(8, (mainImage.width || 400) * 0.06)
   const hot = { id: genId('hot'), cx: x / mainImage.width, cy: y / mainImage.height, r_frac: rpx / mainImage.width, label: 'Begriff' }
-  img.hotspots.push(hot); save(); renderHotspots()
+  img.hotspots.push(hot)
+  save()
+  renderHotspots()
 })
 
 // render hotspots + grip
-function renderHotspots(){ Array.from(canvasWrap.querySelectorAll('.hot-circle, .resize-grip')).forEach(n=>n.remove())
+function renderHotspots(){
+  Array.from(canvasWrap.querySelectorAll('.hot-circle, .resize-grip')).forEach(n=>n.remove())
   if(!selectedImageId) return
-  const img = store.images.find(x=>x.id===selectedImageId); if(!img) return
+  const img = store.images.find(x=>x.id===selectedImageId)
+  if(!img) return
   if(!mainImage.complete || mainImage.naturalWidth===0) return
   img.hotspots.forEach(h=>{
     const left = h.cx * mainImage.width - h.r_frac * mainImage.width
@@ -239,12 +305,20 @@ function renderHotspots(){ Array.from(canvasWrap.querySelectorAll('.hot-circle, 
     el.addEventListener('mousedown', ev=>{ if(ev.button!==0) return; startMaybeDragOrResize(ev, h.id) })
     if(selectedHotId === h.id) el.classList.add('selected')
     canvasWrap.appendChild(el)
-    if(selectedHotId === h.id){ const grip = document.createElement('div'); grip.className = 'resize-grip'; grip.dataset.hid = h.id; grip.style.left = (left + size - 8) + 'px'; grip.style.top = (top + size/2 - 8) + 'px'; grip.addEventListener('mousedown', ev=>{ ev.preventDefault(); ev.stopPropagation(); startResize(ev, h.id) }); canvasWrap.appendChild(grip) }
+    if(selectedHotId === h.id){
+      const grip = document.createElement('div'); grip.className = 'resize-grip'; grip.dataset.hid = h.id
+      grip.style.left = (left + size - 8) + 'px'; grip.style.top = (top + size/2 - 8) + 'px'
+      grip.addEventListener('mousedown', ev=>{ ev.preventDefault(); ev.stopPropagation(); startResize(ev, h.id) })
+      canvasWrap.appendChild(grip)
+    }
   })
 }
 
 // open editor modal
-function openEditDialog(hid){ if(!selectedImageId) return; const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hid); if(!h) return
+function openEditDialog(hid){
+  if(!selectedImageId) return
+  const img = store.images.find(x=>x.id===selectedImageId)
+  const h = img.hotspots.find(x=>x.id===hid); if(!h) return
   modalName.value = h.label || ''
   modalRadius.value = Math.round(h.r_frac * mainImage.width)
   editModal.style.display = 'flex'
@@ -258,51 +332,236 @@ function openEditDialog(hid){ if(!selectedImageId) return; const img = store.ima
 editModal.addEventListener('click', ()=>{ editModal.style.display = 'none' })
 
 // DRAG/RESIZE logic
-function startMaybeDragOrResize(ev, hid){ ev.preventDefault(); ev.stopPropagation(); const el = ev.currentTarget; const startX = ev.clientX, startY = ev.clientY; const origLeft = parseFloat(el.style.left), origTop = parseFloat(el.style.top); const origW = el.offsetWidth; const centerX = origLeft + origW/2; const centerY = origTop + origW/2; const pageCenterX = canvasWrap.getBoundingClientRect().left + centerX; const pageCenterY = canvasWrap.getBoundingClientRect().top + centerY; const distToCenter = Math.hypot(ev.clientX - pageCenterX, ev.clientY - pageCenterY); const radiusPx = origW/2; const edgeThreshold = 12; const isNearEdge = Math.abs(distToCenter - radiusPx) <= edgeThreshold; maybeDrag = { hid, el, startX, startY, origLeft, origTop, origW, moved:false, mode: isNearEdge ? 'maybeResize' : 'maybeMove', centerX, centerY }
-  function onMove(e){ if(!maybeDrag) return; const dx = e.clientX - maybeDrag.startX; const dy = e.clientY - maybeDrag.startY; const dist = Math.hypot(dx,dy); if(!maybeDrag.moved && dist > 6){ maybeDrag.moved = true; if(maybeDrag.mode === 'maybeResize'){ resizing = { hid: maybeDrag.hid, hEl: maybeDrag.el, startX: maybeDrag.startX, startW: maybeDrag.origW, centerX: maybeDrag.centerX, centerY: maybeDrag.centerY } } else { dragging = { hid: maybeDrag.hid, el: maybeDrag.el, startX: maybeDrag.startX, startY: maybeDrag.startY, origLeft: maybeDrag.origLeft, origTop: maybeDrag.origTop } } }
-    if(maybeDrag.moved){ if(maybeDrag.mode === 'maybeResize' && resizing){ const cX = canvasWrap.getBoundingClientRect().left + maybeDrag.centerX; const cY = canvasWrap.getBoundingClientRect().top + maybeDrag.centerY; const curDist = Math.hypot(e.clientX - cX, e.clientY - cY); let newW = Math.max(8, curDist*2); newW = Math.min(newW, mainImage.width); resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'; const newLeft = maybeDrag.centerX - newW/2; const newTop = maybeDrag.centerY - newW/2; resizing.hEl.style.left = newLeft + 'px'; resizing.hEl.style.top = newTop + 'px'; const grip = canvasWrap.querySelector(`.resize-grip[data-hid="${maybeDrag.hid}"]`); if(grip){ grip.style.left = (newLeft + newW - 8) + 'px'; grip.style.top = (newTop + newW/2 - 8) + 'px' } } else if(dragging){ const nx = dragging.origLeft + (e.clientX - dragging.startX); const ny = dragging.origTop + (e.clientY - dragging.startY); const clampedX = Math.max(0, Math.min(nx, mainImage.width - dragging.el.offsetWidth)); const clampedY = Math.max(0, Math.min(ny, mainImage.height - dragging.el.offsetHeight)); dragging.el.style.left = clampedX + 'px'; dragging.el.style.top = clampedY + 'px'; const grip = canvasWrap.querySelector(`.resize-grip[data-hid="${maybeDrag.hid}"]`); if(grip){ grip.style.left = (clampedX + dragging.el.offsetWidth - 8) + 'px'; grip.style.top = (clampedY + dragging.el.offsetHeight/2 - 8) + 'px' } } }
-  function onUp(e){ if(maybeDrag && maybeDrag.moved){ if(maybeDrag.mode === 'maybeResize' && resizing){ const hidf = resizing.hid; const el = resizing.hEl; const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf); const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save(); } else if(dragging){ const hidf = dragging.hid; const el = dragging.el; const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf); const size = el.offsetWidth; h.cx = (parseFloat(el.style.left) + size/2) / mainImage.width; h.cy = (parseFloat(el.style.top) + size/2) / mainImage.height; save(); } }
-    maybeDrag = null; dragging = null; resizing = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); renderHotspots() }
-  window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp) }
+function startMaybeDragOrResize(ev, hid){
+  ev.preventDefault(); ev.stopPropagation()
+  const el = ev.currentTarget
+  const startX = ev.clientX, startY = ev.clientY
+  const origLeft = parseFloat(el.style.left), origTop = parseFloat(el.style.top)
+  const origW = el.offsetWidth
+  const centerX = origLeft + origW/2, centerY = origTop + origW/2
+  const pageCenterX = canvasWrap.getBoundingClientRect().left + centerX
+  const pageCenterY = canvasWrap.getBoundingClientRect().top + centerY
+  const distToCenter = Math.hypot(ev.clientX - pageCenterX, ev.clientY - pageCenterY)
+  const radiusPx = origW/2; const edgeThreshold = 12
+  const isNearEdge = Math.abs(distToCenter - radiusPx) <= edgeThreshold
+  maybeDrag = { hid, el, startX, startY, origLeft, origTop, origW, moved:false, mode: isNearEdge ? 'maybeResize' : 'maybeMove', centerX, centerY }
 
-function startResize(ev, hid){ ev.preventDefault(); ev.stopPropagation(); const grip = ev.currentTarget; const hEl = canvasWrap.querySelector(`.hot-circle[data-id="${hid}"]`); if(!hEl) return; const startX = ev.clientX; const startW = hEl.offsetWidth; resizing = {hid, hEl, startX, startW}; function onMove(e){ if(!resizing) return; const dx = e.clientX - resizing.startX; let newW = Math.max(8, resizing.startW + dx); newW = Math.min(newW, mainImage.width); resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'; const left = parseFloat(resizing.hEl.style.left); const top = parseFloat(resizing.hEl.style.top); const gripEl = canvasWrap.querySelector(`.resize-grip[data-hid="${resizing.hid}"]`); if(gripEl){ gripEl.style.left = (left + newW - 8) + 'px'; gripEl.style.top = (top + newW/2 - 8) + 'px' } }
-  function onUp(e){ if(!resizing) return; const hidf = resizing.hid; const el = resizing.hEl; const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf); const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save(); resizing = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); renderHotspots() }
-  window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp) }
+  function onMove(e){
+    if(!maybeDrag) return
+    const dx = e.clientX - maybeDrag.startX, dy = e.clientY - maybeDrag.startY
+    const dist = Math.hypot(dx,dy)
+    if(!maybeDrag.moved && dist > 6){
+      maybeDrag.moved = true
+      if(maybeDrag.mode === 'maybeResize'){
+        resizing = { hid: maybeDrag.hid, hEl: maybeDrag.el, startX: maybeDrag.startX, startW: maybeDrag.origW, centerX: maybeDrag.centerX, centerY: maybeDrag.centerY }
+      } else {
+        dragging = { hid: maybeDrag.hid, el: maybeDrag.el, startX: maybeDrag.startX, startY: maybeDrag.startY, origLeft: maybeDrag.origLeft, origTop: maybeDrag.origTop }
+      }
+    }
+    if(maybeDrag.moved){
+      if(maybeDrag.mode === 'maybeResize' && resizing){
+        const cX = canvasWrap.getBoundingClientRect().left + maybeDrag.centerX
+        const cY = canvasWrap.getBoundingClientRect().top + maybeDrag.centerY
+        const curDist = Math.hypot(e.clientX - cX, e.clientY - cY)
+        let newW = Math.max(8, curDist*2); newW = Math.min(newW, mainImage.width)
+        resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
+        const newLeft = maybeDrag.centerX - newW/2, newTop = maybeDrag.centerY - newW/2
+        resizing.hEl.style.left = newLeft + 'px'; resizing.hEl.style.top = newTop + 'px'
+        const grip = canvasWrap.querySelector(`.resize-grip[data-hid="${maybeDrag.hid}"]`)
+        if(grip){ grip.style.left = (newLeft + newW - 8) + 'px'; grip.style.top = (newTop + newW/2 - 8) + 'px' }
+      } else if(dragging){
+        const nx = dragging.origLeft + (e.clientX - dragging.startX)
+        const ny = dragging.origTop + (e.clientY - dragging.startY)
+        const clampedX = Math.max(0, Math.min(nx, mainImage.width - dragging.el.offsetWidth))
+        const clampedY = Math.max(0, Math.min(ny, mainImage.height - dragging.el.offsetHeight))
+        dragging.el.style.left = clampedX + 'px'; dragging.el.style.top = clampedY + 'px'
+        const grip = canvasWrap.querySelector(`.resize-grip[data-hid="${maybeDrag.hid}"]`)
+        if(grip){ grip.style.left = (clampedX + dragging.el.offsetWidth - 8) + 'px'; grip.style.top = (clampedY + dragging.el.offsetHeight/2 - 8) + 'px' }
+      }
+    }
+  }
 
-// helper to build share payload (images already stored as data URLs -> use directly)
+  function onUp(e){
+    if(maybeDrag && maybeDrag.moved){
+      if(maybeDrag.mode === 'maybeResize' && resizing){
+        const hidf = resizing.hid; const el = resizing.hEl
+        const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
+        const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save()
+      } else if(dragging){
+        const hidf = dragging.hid; const el = dragging.el
+        const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
+        const size = el.offsetWidth; h.cx = (parseFloat(el.style.left) + size/2) / mainImage.width; h.cy = (parseFloat(el.style.top) + size/2) / mainImage.height; save()
+      }
+    }
+    maybeDrag = null; dragging = null; resizing = null
+    window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
+    renderHotspots()
+  }
+
+  window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+}
+
+function startResize(ev, hid){
+  ev.preventDefault(); ev.stopPropagation()
+  const grip = ev.currentTarget
+  const hEl = canvasWrap.querySelector(`.hot-circle[data-id="${hid}"]`)
+  if(!hEl) return
+  const startX = ev.clientX; const startW = hEl.offsetWidth
+  resizing = {hid, hEl, startX, startW}
+  function onMove(e){
+    if(!resizing) return
+    const dx = e.clientX - resizing.startX
+    let newW = Math.max(8, resizing.startW + dx); newW = Math.min(newW, mainImage.width)
+    resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
+    const left = parseFloat(resizing.hEl.style.left); const top = parseFloat(resizing.hEl.style.top)
+    const gripEl = canvasWrap.querySelector(`.resize-grip[data-hid="${resizing.hid}"]`)
+    if(gripEl){ gripEl.style.left = (left + newW - 8) + 'px'; gripEl.style.top = (top + newW/2 - 8) + 'px' }
+  }
+  function onUp(e){
+    if(!resizing) return
+    const hidf = resizing.hid; const el = resizing.hEl
+    const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
+    const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save()
+    resizing = null
+    window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
+    renderHotspots()
+  }
+  window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+}
+// create share link (data URLs already stored in `store.images`)
 btnCreateLink.addEventListener('click', async ()=>{
   if(store.images.length===0) return alert('Keine Bilder vorhanden')
   btnCreateLink.disabled = true; btnCreateLink.textContent = 'Erstelle...'
   try{
-    const imagesOut = store.images.map(img=>({id: img.id, name: img.name, data: img.data, hotspots: img.hotspots}))
-    const payload = {images: imagesOut}
+    const imagesOut = store.images.map(img=>({ id: img.id, name: img.name, data: img.data, hotspots: img.hotspots }))
+    const payload = { images: imagesOut }
     const s = JSON.stringify(payload)
     const b64 = btoa(unescape(encodeURIComponent(s)))
     const link = location.origin + location.pathname + '#quiz=' + b64
     linkBox.value = link
-  }catch(e){ alert('Fehler beim Erstellen: '+e.message) }
+  }catch(e){
+    alert('Fehler beim Erstellen: '+e.message)
+  }
   btnCreateLink.disabled = false; btnCreateLink.textContent = 'Share-Link erstellen'
 })
-btnCopyLink.addEventListener('click', ()=>{ if(!linkBox.value) return alert('Kein Link erstellt'); navigator.clipboard.writeText(linkBox.value).then(()=>alert('Link kopiert')) })
 
-// quiz: check URL on load
-function checkUrl(){ const h = location.hash || ''; if(h.startsWith('#quiz=')){ try{ const b64 = h.slice(6); const json = decodeURIComponent(escape(atob(b64))); const obj = JSON.parse(json); if(obj && obj.images){ startQuizFromPayload(obj); return true } }catch(e){ console.error(e) } } return false }
+btnCopyLink.addEventListener('click', ()=>{
+  if(!linkBox.value) return alert('Kein Link erstellt')
+  navigator.clipboard.writeText(linkBox.value).then(()=>alert('Link kopiert'))
+})
 
-function startQuizFromPayload(obj){ editorPanel.style.display = 'none'; quizOnlyView.style.display = 'block'; const items = []; obj.images.forEach(img=>{ (img.hotspots||[]).forEach(h=> items.push({imageData: img.data, imageName: img.name, hotspot: h})) }); shuffleArray(items); window.quiz = {items, index:0, missed:[]}; loadQuizItem() }
+// ----- quiz handling when page opened with #quiz=... -----
+function checkUrl(){
+  const h = location.hash || ''
+  if(h.startsWith('#quiz=')){
+    try{
+      const b64 = h.slice(6)
+      const json = decodeURIComponent(escape(atob(b64)))
+      const obj = JSON.parse(json)
+      if(obj && obj.images){
+        startQuizFromPayload(obj)
+        return true
+      }
+    }catch(e){ console.error('Invalid quiz payload', e) }
+  }
+  return false
+}
 
-function loadQuizItem(){ const q = window.quiz; if(!q) return; if(q.index>=q.items.length){ if(q.missed.length>0){ q.items = q.missed.slice(); q.missed = []; q.index = 0; quizFeedback.innerHTML = '<div class="message bad">Nochmals: falsch beantwortete Begriffe</div>'; setTimeout(()=>{ quizFeedback.innerHTML=''; loadQuizItem() },800); return } else { quizFeedback.innerHTML = '<div class="message ok">Alle Begriffe richtig!</div>'; termBox.textContent = 'Fertig'; progressBox.textContent = ''; return } } const item = q.items[q.index]; termBox.textContent = item.hotspot.label || 'Begriff'; quizImage.src = item.imageData; quizImage.onload = ()=>{ progressBox.textContent = `${q.index+1} / ${q.items.length}` }; quizFeedback.innerHTML = '' }
+function startQuizFromPayload(obj){
+  // hide editor, show quiz
+  editorPanel.style.display = 'none'
+  quizOnlyView.style.display = 'block'
+  // build quiz items: each hotspot is one item
+  const items = []
+  obj.images.forEach(img=>{
+    (img.hotspots||[]).forEach(h=>{
+      items.push({ imageData: img.data, imageName: img.name, hotspot: h })
+    })
+  })
+  shuffleArray(items)
+  window.quiz = { items, index: 0, missed: [] }
+  loadQuizItem()
+}
 
+function loadQuizItem(){
+  const q = window.quiz
+  if(!q) return
+  if(q.index >= q.items.length){
+    if(q.missed.length > 0){
+      // replay missed
+      q.items = q.missed.slice()
+      q.missed = []
+      q.index = 0
+      quizFeedback.innerHTML = '<div class="message bad">Nochmals: falsch beantwortete Begriffe</div>'
+      setTimeout(()=>{ quizFeedback.innerHTML=''; loadQuizItem() }, 700)
+      return
+    } else {
+      quizFeedback.innerHTML = '<div class="message ok">Alle Begriffe richtig!</div>'
+      termBox.textContent = 'Fertig'
+      progressBox.textContent = ''
+      return
+    }
+  }
+  const item = q.items[q.index]
+  termBox.textContent = item.hotspot.label || 'Begriff'
+  quizImage.src = item.imageData
+  quizImage.onload = ()=>{ progressBox.textContent = `${q.index+1} / ${q.items.length}` }
+  quizFeedback.innerHTML = ''
+}
+
+// clicking on quiz image checks hit
 const quizCanvas = document.getElementById('quizCanvas')
-quizCanvas.addEventListener('click', ev=>{ const q = window.quiz; if(!q) return; const item = q.items[q.index]; const rect = quizImage.getBoundingClientRect(); const mx = ev.clientX - rect.left; const my = ev.clientY - rect.top; const imgW = quizImage.width; const imgH = quizImage.height; const h = item.hotspot; let hit = false; if(h && h.cx!==undefined){ const cx = h.cx * imgW; const cy = h.cy * imgH; const rr = h.r_frac * imgW; const dx = mx-cx; const dy = my-cy; hit = (dx*dx + dy*dy) <= (rr*rr) } if(hit){ quizFeedback.innerHTML = '<div class="message ok">Richtig</div>'; q.index++; setTimeout(()=>loadQuizItem(),600) } else { quizFeedback.innerHTML = '<div class="message bad">Falsch — erscheint erneut</div>'; q.missed.push(item); q.index++; setTimeout(()=>loadQuizItem(),700) } })
+quizCanvas.addEventListener('click', ev=>{
+  const q = window.quiz
+  if(!q) return
+  const item = q.items[q.index]
+  const rect = quizImage.getBoundingClientRect()
+  const mx = ev.clientX - rect.left
+  const my = ev.clientY - rect.top
+  const imgW = quizImage.width
+  const h = item.hotspot
+  let hit = false
+  if(h && h.cx !== undefined){
+    const cx = h.cx * imgW
+    const cy = h.cy * quizImage.height
+    const rr = h.r_frac * imgW
+    const dx = mx - cx, dy = my - cy
+    hit = (dx*dx + dy*dy) <= (rr*rr)
+  }
+  if(hit){
+    quizFeedback.innerHTML = '<div class="message ok">Richtig</div>'
+    q.index++
+    setTimeout(()=>loadQuizItem(), 600)
+  } else {
+    quizFeedback.innerHTML = '<div class="message bad">Falsch — erscheint erneut</div>'
+    q.missed.push(item)
+    q.index++
+    setTimeout(()=>loadQuizItem(), 700)
+  }
+})
 
-btnRestartQuiz.addEventListener('click', ()=>{ if(window.quiz){ window.quiz.index=0; window.quiz.missed=[]; shuffleArray(window.quiz.items); loadQuizItem() } })
+btnRestartQuiz.addEventListener('click', ()=>{
+  if(window.quiz){
+    window.quiz.index = 0
+    window.quiz.missed = []
+    shuffleArray(window.quiz.items)
+    loadQuizItem()
+  }
+})
 
-function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } }
+function shuffleArray(a){
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1))
+    ;[a[i],a[j]] = [a[j],a[i]]
+  }
+}
 
-if(!checkUrl()){ quizOnlyView.style.display = 'none' }
+// initial check: if URL has payload, start quiz
+if(!checkUrl()){
+  quizOnlyView.style.display = 'none'
+}
 
-// cleanup not needed for data URLs
-
+// --- end script and HTML ---
 </script>
 </body>
 </html>
