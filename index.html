@@ -3,62 +3,47 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Hotspot-Quiz — Editor & Share</title>
-<meta name="color-scheme" content="dark light">
+<title>Hotspot-Quiz — Editor (dblclick fixed)</title>
 <style>
-  /* Dark modern theme, responsive */
   :root{
-    --bg:#0b1220; --panel:#0f1724; --muted:#9aa7b2; --accent:#60a5fa; --accent-strong:#3b82f6;
-    --card:#0b1220; --glass: rgba(255,255,255,0.03);
+    --bg:#071029; --panel:#0c1724; --muted:#9aa7b2; --accent:#60a5fa; --accent-strong:#3b82f6;
   }
-  html,body{height:100%}
-  body{
-    margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
-    background:linear-gradient(180deg,#061021 0%, #081827 100%); color:#e6eef8;
-    -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;padding:18px;
-  }
+  body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#061021,#081827);color:#e6eef8;padding:18px}
   .wrap{max-width:1100px;margin:0 auto}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-  h1{font-size:18px;margin:0}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  h1{margin:0;font-size:18px}
   .muted{color:var(--muted);font-size:13px}
   .panel{background:var(--panel);border-radius:12px;padding:14px;box-shadow:0 6px 30px rgba(2,6,23,.6)}
   .cols{display:flex;gap:16px;align-items:flex-start}
-  .left{width:320px;min-width:230px}
-  input[type=file], input[type=text], input[type=number]{
-    width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:inherit;
-  }
-  .btn{background:linear-gradient(180deg,var(--accent),var(--accent-strong));color:#041022;border:0;padding:10px;border-radius:10px;cursor:pointer;font-weight:600}
+  .left{width:320px;min-width:220px}
+  input[type=file],input[type=text],input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+  .btn{background:linear-gradient(180deg,var(--accent),var(--accent-strong));color:#041022;padding:10px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
   .link-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer}
   .thumb{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;border:1px dashed rgba(255,255,255,0.03);margin-top:10px;cursor:pointer;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.01))}
   .thumb img{width:78px;height:56px;object-fit:cover;border-radius:8px}
-  .editor{position:relative;background:#020617;color:#fff;min-height:420px;display:flex;align-items:center;justify-content:center;border-radius:10px;padding:8px}
-  #canvasWrap{position:relative;display:inline-block;border-radius:10px;overflow:hidden;background:#021024}
+  .editor{position:relative;background:#021024;color:#fff;min-height:420px;display:flex;align-items:center;justify-content:center;border-radius:10px;padding:8px}
+  #canvasWrap{position:relative;display:inline-block;border-radius:10px;overflow:hidden;background:#031628}
   #mainImage{display:block;max-width:880px;max-height:68vh;width:auto;height:auto;touch-action:none}
   .hot-circle{position:absolute;border:3px solid rgba(96,165,250,0.95);background:rgba(59,130,246,0.12);border-radius:50%;box-sizing:border-box;pointer-events:auto;transition:box-shadow .08s}
   .hot-circle.selected{box-shadow:0 0 0 6px rgba(96,165,250,0.06), inset 0 0 0 4px rgba(59,130,246,0.18)}
   .resize-grip{position:absolute;width:16px;height:16px;background:#eaf2ff;border:2px solid var(--accent-strong);border-radius:4px;cursor:ew-resize;box-sizing:border-box}
-  .controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .small{font-size:13px;color:var(--muted)}
-  /* quiz UI */
   #quizOnlyView{display:none;margin-top:12px}
   .thumbnails{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-  .quiz-thumb{width:84px; height:60px; object-fit:cover; border-radius:8px; border:2px solid transparent; cursor:pointer}
-  .quiz-thumb.selected{outline:3px solid rgba(96,165,250,0.16); transform:scale(1.02)}
+  .quiz-thumb{width:84px;height:60px;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer}
+  .quiz-thumb.selected{outline:3px solid rgba(96,165,250,0.16);transform:scale(1.02)}
   .term-row{display:flex;gap:12px;align-items:center;justify-content:space-between}
-  .term-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .term-pill{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,0.03);color:var(--muted);font-weight:600}
   .message{padding:10px;border-radius:8px}
   .message.ok{background:#042e13;color:#a7f3d0}
   .message.bad{background:#3f0a0a;color:#fecaca}
-  footer{margin-top:10px;color:var(--muted);font-size:13px}
-  /* responsive */
   @media (max-width:880px){ .cols{flex-direction:column} .left{width:100%} .thumb img{width:90px;height:60px} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Hotspot-Editor — Editor & Quiz</h1>
+    <h1>Hotspot-Editor — Doppelklick fixed</h1>
     <div class="muted">Erstelle Hotspots, generiere Share-Link → öffnet direkt das Quiz (mobil & desktop).</div>
   </header>
 
@@ -76,7 +61,7 @@
       <div style="margin-top:8px">
         <label class="small">Bildname</label>
         <input id="imageName" type="text" placeholder="Name des Bildes" />
-        <div class="controls">
+        <div style="display:flex;gap:8px;margin-top:8px">
           <button id="btnSaveName" class="btn">Speichern</button>
           <button id="btnDeleteImage" class="link-btn">Bild löschen</button>
         </div>
@@ -112,7 +97,6 @@
     </div>
   </div>
 
-  <!-- Quiz view -->
   <div id="quizOnlyView" class="panel">
     <div class="term-row">
       <div>
@@ -126,12 +110,12 @@
     </div>
 
     <div style="margin-top:10px">
-      <div class="muted">Alle Begriffe (übersicht):</div>
-      <div id="allTermsRow" class="term-list"></div>
+      <div class="small">Alle Begriffe (Übersicht):</div>
+      <div id="allTermsRow" style="margin-top:6px"></div>
     </div>
 
     <div style="margin-top:10px">
-      <div class="muted">Wähle ein Bild:</div>
+      <div class="small">Wähle ein Bild:</div>
       <div id="quizThumbs" class="thumbnails"></div>
     </div>
 
@@ -142,20 +126,18 @@
     <div id="quizFeedback" style="margin-top:8px"></div>
   </div>
 
-  <footer>Hinweis: Share-Link enthält Bilddaten (Data-URLs). Sehr große Bilder können zu langen Links führen.</footer>
+  <footer class="small" style="margin-top:10px">Hinweis: Share-Link enthält Bilddaten (Data-URLs). Sehr große Bilder führen zu langen Links.</footer>
 </div>
 
-<!-- Modal for editing hotspot -->
+<!-- Modal -->
 <div id="editModal" class="modal-backdrop" style="display:none">
   <div id="modalContent" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h3 id="modalTitle">Hotspot bearbeiten</h3>
     <label class="small" for="modalName">Name</label>
     <input id="modalName" type="text" />
-    <div class="row" style="margin-top:8px">
-      <div style="flex:1">
-        <label class="small" for="modalRadius">Radius (px)</label>
-        <input id="modalRadius" type="number" min="4" />
-      </div>
+    <div style="margin-top:8px">
+      <label class="small" for="modalRadius">Radius (px)</label>
+      <input id="modalRadius" type="number" min="4" />
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
       <button id="modalCancel" class="link-btn">Abbrechen</button>
@@ -166,20 +148,22 @@
 </div>
 
 <script>
-/* UTF8-safe base64 helpers */
-function b64EncodeUnicode(str){
-  return btoa(unescape(encodeURIComponent(str)))
-}
-function b64DecodeUnicode(b64){
-  return decodeURIComponent(escape(atob(b64)))
-}
+/* helpers for UTF-8 safe base64 */
+function b64EncodeUnicode(str){ return btoa(unescape(encodeURIComponent(str))) }
+function b64DecodeUnicode(b64){ return decodeURIComponent(escape(atob(b64))) }
 
-/* App state */
-const LS = 'hotspot_quiz_v2'
-let store = { images: [] } // images: {id,name,data,hotspots: [{id,cx,cy,r_frac,label}]}
+/* STATE */
+const LS = 'hotspot_quiz_v3'
+let store = { images: [] } // images: {id,name,data,hotspots:[{id,cx,cy,r_frac,label}]}
 let selectedImageId = null
 let selectedHotId = null
+
+/* Drag/resize state */
 let maybeDrag = null, dragging = null, resizing = null
+
+/* single-click timer (for distinguishing click vs dblclick) */
+let singleClickTimer = null
+const CLICK_DELAY = 250 // ms to wait for dblclick
 
 /* UI refs */
 const fileInput = document.getElementById('fileInput')
@@ -193,7 +177,6 @@ const btnCreateLink = document.getElementById('btnCreateLink')
 const btnCopyLink = document.getElementById('btnCopyLink')
 const linkBox = document.getElementById('linkBox')
 
-/* quiz refs */
 const quizOnlyView = document.getElementById('quizOnlyView')
 const editorPanel = document.querySelector('.panel.cols')
 const quizImage = document.getElementById('quizImage')
@@ -204,7 +187,6 @@ const quizFeedback = document.getElementById('quizFeedback')
 const progressBox = document.getElementById('progressBox')
 const btnRestartQuiz = document.getElementById('btnRestartQuiz')
 
-/* modal refs */
 const editModal = document.getElementById('editModal')
 const modalContent = document.getElementById('modalContent')
 const modalName = document.getElementById('modalName')
@@ -214,50 +196,39 @@ const modalDelete = document.getElementById('modalDelete')
 const modalSave = document.getElementById('modalSave')
 
 /* load/save */
-function load(){
-  const s = localStorage.getItem(LS)
-  if(!s){ store = {images:[]} ; return }
-  try{ store = JSON.parse(s) }catch(e){ store = {images:[]} }
-}
-function save(){
-  try{ localStorage.setItem(LS, JSON.stringify(store)) }
-  catch(err){ alert('Speichern fehlgeschlagen (localStorage voll?). Verwende kleinere Bilder oder exportiere per Link.') }
-}
+function load(){ const s = localStorage.getItem(LS); if(!s){ store={images:[]} ; return } try{ store = JSON.parse(s) }catch(e){ store={images:[]} } }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(store)) }catch(e){ alert('Speichern fehlgeschlagen (localStorage voll?). Verwende kleinere Bilder oder Export per Link.') } }
 load(); renderImageList()
 
-/* util */
-function genId(p='id'){ return p + '_' + Math.random().toString(36).slice(2,10) }
+/* utilities */
+function genId(prefix='id'){ return prefix+'_'+Math.random().toString(36).slice(2,10) }
 function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
-function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file) })}
+function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file) }) }
 
 /* UPLOAD */
 fileInput.addEventListener('change', async e=>{
   const files = Array.from(e.target.files || [])
   if(files.length===0) return
   for(const f of files){
-    try{
-      const data = await fileToDataURL(f)
-      store.images.push({ id: genId('img'), name: f.name, data, hotspots: [] })
-    }catch(err){ console.error('file->dataURL failed', err) }
+    try{ const data = await fileToDataURL(f); store.images.push({id:genId('img'), name:f.name, data, hotspots:[]}) }
+    catch(err){ console.error('file->dataURL failed', err) }
   }
   save(); renderImageList(); fileInput.value = ''
 })
 
-/* RENDER IMAGE LIST (left panel) */
+/* RENDER LEFT LIST */
 function renderImageList(){
   imageList.innerHTML = ''
-  if(store.images.length===0){
-    imageList.innerHTML = '<div class="muted" style="margin-top:8px">Noch keine Bilder hochgeladen</div>'; return
-  }
+  if(store.images.length===0){ imageList.innerHTML = '<div class="small" style="margin-top:8px;color:var(--muted)">Noch keine Bilder hochgeladen</div>'; return }
   for(const img of store.images){
-    const d = document.createElement('div'); d.className='thumb'
+    const d=document.createElement('div'); d.className='thumb'
     d.innerHTML = `<img src="${img.data}" alt="${escapeHtml(img.name)}"><div style="flex:1"><strong>${escapeHtml(img.name)}</strong><div class="small" style="color:var(--muted)">${img.hotspots.length} Hotspots</div></div>`
     d.addEventListener('click', ()=> selectImage(img.id))
     imageList.appendChild(d)
   }
 }
 
-/* SELECT IMAGE FOR EDITING */
+/* SELECT IMAGE */
 function selectImage(id){
   selectedImageId = id; selectedHotId = null
   const img = store.images.find(x=>x.id===id); if(!img) return
@@ -266,62 +237,74 @@ function selectImage(id){
   if(mainImage.complete) renderHotspots()
 }
 
-/* NAME / DELETE IMAGE */
-btnSaveName.addEventListener('click', ()=>{
-  if(!selectedImageId) return alert('Kein Bild ausgewählt')
-  const img = store.images.find(x=>x.id===selectedImageId); img.name = imageName.value || img.name
-  save(); renderImageList(); alert('Bildname gespeichert')
-})
-btnDeleteImage.addEventListener('click', ()=>{
-  if(!selectedImageId) return alert('Kein Bild ausgewählt'); if(!confirm('Bild löschen?')) return
-  store.images = store.images.filter(x=>x.id!==selectedImageId); selectedImageId=null; selectedHotId=null; save(); renderImageList(); mainImage.src=''
-})
+/* SAVE NAME / DELETE */
+btnSaveName.addEventListener('click', ()=>{ if(!selectedImageId) return alert('Kein Bild ausgewählt'); const img = store.images.find(x=>x.id===selectedImageId); img.name = imageName.value || img.name; save(); renderImageList(); alert('Bildname gespeichert') })
+btnDeleteImage.addEventListener('click', ()=>{ if(!selectedImageId) return alert('Kein Bild ausgewählt'); if(!confirm('Bild löschen?')) return; store.images = store.images.filter(x=>x.id!==selectedImageId); selectedImageId=null; selectedHotId=null; save(); renderImageList(); mainImage.src='' })
 
 /* CREATE HOTSPOT (click in image) */
 mainImage.addEventListener('click', ev=>{
   if(!selectedImageId) return
   if(dragging || resizing) return
-  const rect = mainImage.getBoundingClientRect()
-  const x = ev.clientX - rect.left, y = ev.clientY - rect.top
+  const rect=mainImage.getBoundingClientRect(); const x = ev.clientX-rect.left, y = ev.clientY-rect.top
   const img = store.images.find(x=>x.id===selectedImageId)
-  const rpx = Math.max(10, (mainImage.width || 400) * 0.06)
-  const hot = { id: genId('hot'), cx: x / mainImage.width, cy: y / mainImage.height, r_frac: rpx / mainImage.width, label: 'Begriff' }
+  const rpx = Math.max(10, (mainImage.width||400)*0.06)
+  const hot = { id: genId('hot'), cx: x/mainImage.width, cy: y/mainImage.height, r_frac: rpx/mainImage.width, label: 'Begriff' }
   img.hotspots.push(hot); save(); renderHotspots()
 })
 
-/* render hotspots overlay */
+/* RENDER HOTSPOTS (overlay) */
 function renderHotspots(){
-  // remove existing
   Array.from(canvasWrap.querySelectorAll('.hot-circle, .resize-grip')).forEach(n=>n.remove())
   if(!selectedImageId) return
   const img = store.images.find(x=>x.id===selectedImageId); if(!img) return
   if(!mainImage.complete || mainImage.naturalWidth===0) return
   for(const h of img.hotspots){
-    const left = h.cx * mainImage.width - h.r_frac * mainImage.width
-    const top = h.cy * mainImage.height - h.r_frac * mainImage.width
-    const size = h.r_frac * mainImage.width * 2
+    const left = h.cx*mainImage.width - h.r_frac*mainImage.width
+    const top = h.cy*mainImage.height - h.r_frac*mainImage.width
+    const size = h.r_frac*mainImage.width*2
     const el = document.createElement('div'); el.className='hot-circle'; el.dataset.id = h.id
-    el.style.left = left + 'px'; el.style.top = top + 'px'; el.style.width = size + 'px'; el.style.height = size + 'px'
-    el.addEventListener('click', e=>{ e.stopPropagation(); selectedHotId = h.id; renderHotspots() })
-    el.addEventListener('dblclick', e=>{ e.stopPropagation(); openEditDialog(h.id) })
-    // long-press for touch devices to edit (600ms)
-    let touchTimer = null
-    el.addEventListener('touchstart', ()=>{ touchTimer = setTimeout(()=>{ openEditDialog(h.id) }, 600) })
-    el.addEventListener('touchend', ()=>{ if(touchTimer){ clearTimeout(touchTimer); touchTimer=null } })
-    el.addEventListener('mousedown', ev=>{ if(ev.button !== 0) return; startMaybeDragOrResize(ev, h.id) })
+    el.style.left = left+'px'; el.style.top = top+'px'; el.style.width = size+'px'; el.style.height = size+'px'
+    // click -> single click select (timer) ; dblclick -> edit
+    el.addEventListener('click', e=>{
+      e.stopPropagation()
+      // clear any existing timers
+      if(singleClickTimer) clearTimeout(singleClickTimer)
+      // schedule single-click action
+      singleClickTimer = setTimeout(()=>{
+        singleClickTimer = null
+        selectedHotId = h.id; renderHotspots()
+      }, CLICK_DELAY)
+    })
+    el.addEventListener('dblclick', e=>{
+      e.stopPropagation()
+      // cancel single click action, open modal
+      if(singleClickTimer){ clearTimeout(singleClickTimer); singleClickTimer = null }
+      openEditDialog(h.id)
+    })
+    // touch long-press to edit
+    let touchTimer = null, touchMoved=false
+    el.addEventListener('touchstart', ev=>{
+      touchMoved=false
+      touchTimer = setTimeout(()=>{ openEditDialog(h.id); touchTimer=null }, 600)
+    }, {passive:true})
+    el.addEventListener('touchmove', ()=>{ touchMoved=true; if(touchTimer){ clearTimeout(touchTimer); touchTimer=null }})
+    el.addEventListener('touchend', ()=>{ if(touchTimer){ clearTimeout(touchTimer); touchTimer=null }})
+    // mousedown to possibly drag/resize (don't start immediately)
+    el.addEventListener('mousedown', ev=>{ if(ev.button!==0) return; startMaybeDragOrResize(ev, h.id) })
+    el.addEventListener('touchstart', ev=>{ /* for mobile dragging */ startMaybeDragOrResizeTouch(ev, h.id) }, {passive:false})
     if(selectedHotId === h.id) el.classList.add('selected')
     canvasWrap.appendChild(el)
     if(selectedHotId === h.id){
-      const grip = document.createElement('div'); grip.className='resize-grip'; grip.dataset.hid = h.id
+      const grip = document.createElement('div'); grip.className='resize-grip'; grip.dataset.hid=h.id
       grip.style.left = (left + size - 10) + 'px'; grip.style.top = (top + size/2 - 10) + 'px'
       grip.addEventListener('mousedown', ev=>{ ev.preventDefault(); ev.stopPropagation(); startResize(ev, h.id) })
-      grip.addEventListener('touchstart', ev=>{ ev.preventDefault(); ev.stopPropagation(); startResize(ev, h.id) }, {passive:false})
+      grip.addEventListener('touchstart', ev=>{ ev.preventDefault(); ev.stopPropagation(); startResizeTouch(ev, h.id) }, {passive:false})
       canvasWrap.appendChild(grip)
     }
   }
 }
 
-/* modal editing */
+/* EDIT DIALOG */
 function openEditDialog(hid){
   if(!selectedImageId) return
   const img = store.images.find(x=>x.id===selectedImageId); if(!img) return
@@ -329,21 +312,21 @@ function openEditDialog(hid){
   modalName.value = h.label || ''
   modalRadius.value = Math.round(h.r_frac * mainImage.width)
   editModal.style.display = 'flex'
-  modalContent.addEventListener('click', e=> e.stopPropagation())
-  modalCancel.onclick = ()=> { editModal.style.display = 'none' }
-  modalSave.onclick = ()=> {
+  modalContent.addEventListener('click', e=>e.stopPropagation())
+  modalCancel.onclick = ()=> editModal.style.display='none'
+  modalSave.onclick = ()=>{
     const newLabel = modalName.value || h.label
     const newRpx = Math.max(4, Number(modalRadius.value) || 8)
-    h.label = newLabel; h.r_frac = newRpx / mainImage.width; save(); editModal.style.display = 'none'; renderHotspots()
+    h.label = newLabel; h.r_frac = newRpx / mainImage.width; save(); editModal.style.display='none'; renderHotspots()
   }
-  modalDelete.onclick = ()=> {
+  modalDelete.onclick = ()=>{
     if(!confirm('Hotspot wirklich löschen?')) return
     img.hotspots = img.hotspots.filter(x=>x.id!==hid); selectedHotId=null; save(); editModal.style.display='none'; renderHotspots()
   }
 }
 editModal.addEventListener('click', ()=> editModal.style.display='none')
 
-/* Drag / Resize (startMaybeDragOrResize) with movement threshold to keep dblclick reliable */
+/* DRAG / RESIZE - mouse version (movement threshold) */
 function startMaybeDragOrResize(ev, hid){
   ev.preventDefault(); ev.stopPropagation()
   const el = ev.currentTarget
@@ -357,6 +340,8 @@ function startMaybeDragOrResize(ev, hid){
   const radiusPx = origW/2, edgeThreshold = 14
   const isNearEdge = Math.abs(distToCenter - radiusPx) <= edgeThreshold
   maybeDrag = { hid, el, startX, startY, origLeft, origTop, origW, moved:false, mode: isNearEdge ? 'maybeResize' : 'maybeMove', centerX, centerY }
+  // cancel pending single-click because mouse down likely precedes a drag
+  if(singleClickTimer){ clearTimeout(singleClickTimer); singleClickTimer = null }
 
   function onMove(e){
     if(!maybeDrag) return
@@ -365,16 +350,15 @@ function startMaybeDragOrResize(ev, hid){
     if(!maybeDrag.moved && dist > 6){
       maybeDrag.moved = true
       if(maybeDrag.mode === 'maybeResize'){
-        resizing = { hid: maybeDrag.hid, hEl: maybeDrag.el, startX: maybeDrag.startX, startW: maybeDrag.origW, centerX: maybeDrag.centerX, centerY: maybeDrag.centerY }
+        resizing = { hid: maybeDrag.hid, hEl: maybeDrag.el, startX: maybeDrag.startX, startW: maybeDrag.origW, centerX: maybeDrag.centerX }
       } else {
         dragging = { hid: maybeDrag.hid, el: maybeDrag.el, startX: maybeDrag.startX, startY: maybeDrag.startY, origLeft: maybeDrag.origLeft, origTop: maybeDrag.origTop }
       }
     }
     if(maybeDrag.moved){
       if(maybeDrag.mode === 'maybeResize' && resizing){
-        const cRect = canvasWrap.getBoundingClientRect()
-        const cX = cRect.left + maybeDrag.centerX, cY = cRect.top + maybeDrag.centerY
-        const curDist = Math.hypot(e.clientX - cX, e.clientY - cY)
+        const cRect2 = canvasWrap.getBoundingClientRect()
+        const cX = cRect2.left + maybeDrag.centerX, curDist = Math.hypot(e.clientX - cX, e.clientY - (cRect2.top + maybeDrag.centerY))
         let newW = Math.max(10, curDist*2); newW = Math.min(newW, mainImage.width)
         resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
         const newLeft = maybeDrag.centerX - newW/2, newTop = maybeDrag.centerY - newW/2
@@ -396,13 +380,13 @@ function startMaybeDragOrResize(ev, hid){
   function onUp(){
     if(maybeDrag && maybeDrag.moved){
       if(maybeDrag.mode === 'maybeResize' && resizing){
-        const hidf = resizing.hid, el = resizing.hEl
-        const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
-        const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save()
+        const hidf = resizing.hid; const el2 = resizing.hEl
+        const imgObj = store.images.find(x=>x.id===selectedImageId); const hh = imgObj.hotspots.find(x=>x.id===hidf)
+        const size = el2.offsetWidth; hh.r_frac = (size/2) / mainImage.width; save()
       } else if(dragging){
-        const hidf = dragging.hid, el = dragging.el
-        const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
-        const size = el.offsetWidth; h.cx = (parseFloat(el.style.left) + size/2) / mainImage.width; h.cy = (parseFloat(el.style.top) + size/2) / mainImage.height; save()
+        const hidf = dragging.hid; const el2 = dragging.el
+        const imgObj = store.images.find(x=>x.id===selectedImageId); const hh = imgObj.hotspots.find(x=>x.id===hidf)
+        const size = el2.offsetWidth; hh.cx = (parseFloat(el2.style.left) + size/2) / mainImage.width; hh.cy = (parseFloat(el2.style.top) + size/2) / mainImage.height; save()
       }
     }
     maybeDrag = null; dragging = null; resizing = null
@@ -413,11 +397,71 @@ function startMaybeDragOrResize(ev, hid){
   window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
 }
 
-/* simple resize via grip */
+/* TOUCH variants for dragging/resizing (touchstart) */
+function startMaybeDragOrResizeTouch(ev, hid){
+  ev.preventDefault(); ev.stopPropagation()
+  const touch = ev.touches[0]; if(!touch) return
+  const el = ev.currentTarget
+  const startX = touch.clientX, startY = touch.clientY
+  const origLeft = parseFloat(el.style.left), origTop = parseFloat(el.style.top), origW = el.offsetWidth
+  const centerX = origLeft + origW/2
+  const cRect = canvasWrap.getBoundingClientRect()
+  const pageCenterX = cRect.left + centerX
+  const distToCenter = Math.hypot(startX - pageCenterX, startY - (cRect.top + (origTop + origW/2)))
+  const radiusPx = origW/2, edgeThreshold = 14
+  const isNearEdge = Math.abs(distToCenter - radiusPx) <= edgeThreshold
+  maybeDrag = { hid, el, startX, startY, origLeft, origTop, origW, moved:false, mode: isNearEdge ? 'maybeResize' : 'maybeMove', centerX }
+  // cancel long-press (handled separately)
+  /* track touchmove/up */
+  function onMove(e){
+    const t = e.touches[0]; if(!t) return
+    const dx = t.clientX - maybeDrag.startX, dy = t.clientY - maybeDrag.startY
+    const dist = Math.hypot(dx,dy)
+    if(!maybeDrag.moved && dist > 6){
+      maybeDrag.moved = true
+      if(maybeDrag.mode === 'maybeResize') resizing = { hid: maybeDrag.hid, hEl: maybeDrag.el, startX: maybeDrag.startX, startW: maybeDrag.origW, centerX: maybeDrag.centerX }
+      else dragging = { hid: maybeDrag.hid, el: maybeDrag.el, startX: maybeDrag.startX, startY: maybeDrag.startY, origLeft: maybeDrag.origLeft, origTop: maybeDrag.origTop }
+    }
+    if(maybeDrag.moved){
+      if(maybeDrag.mode === 'maybeResize' && resizing){
+        const cRect2 = canvasWrap.getBoundingClientRect()
+        const cX = cRect2.left + maybeDrag.centerX
+        const curDist = Math.hypot(t.clientX - cX, t.clientY - (cRect2.top + maybeDrag.centerY || 0))
+        let newW = Math.max(10, curDist*2); newW = Math.min(newW, mainImage.width)
+        resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
+        const newLeft = maybeDrag.centerX - newW/2, newTop = maybeDrag.centerY - newW/2
+        resizing.hEl.style.left = newLeft + 'px'; resizing.hEl.style.top = newTop + 'px'
+      } else if(dragging){
+        const nx = dragging.origLeft + (t.clientX - dragging.startX)
+        const ny = dragging.origTop + (t.clientY - dragging.startY)
+        const clampedX = Math.max(0, Math.min(nx, mainImage.width - dragging.el.offsetWidth))
+        const clampedY = Math.max(0, Math.min(ny, mainImage.height - dragging.el.offsetHeight))
+        dragging.el.style.left = clampedX + 'px'; dragging.el.style.top = clampedY + 'px'
+      }
+    }
+  }
+  function onEnd(){
+    if(maybeDrag && maybeDrag.moved){
+      if(maybeDrag.mode === 'maybeResize' && resizing){
+        const hidf = resizing.hid, el2 = resizing.hEl
+        const imgObj = store.images.find(x=>x.id===selectedImageId); const hh = imgObj.hotspots.find(x=>x.id===hidf)
+        const size = el2.offsetWidth; hh.r_frac = (size/2)/mainImage.width; save()
+      } else if(dragging){
+        const hidf = dragging.hid, el2 = dragging.el
+        const imgObj = store.images.find(x=>x.id===selectedImageId); const hh = imgObj.hotspots.find(x=>x.id===hidf)
+        const size = el2.offsetWidth; hh.cx = (parseFloat(el2.style.left)+size/2)/mainImage.width; hh.cy=(parseFloat(el2.style.top)+size/2)/mainImage.height; save()
+      }
+    }
+    maybeDrag=null; dragging=null; resizing=null
+    window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); renderHotspots()
+  }
+  window.addEventListener('touchmove', onMove, {passive:false}); window.addEventListener('touchend', onEnd)
+}
+
+/* RESIZE via grip (mouse) */
 function startResize(ev, hid){
   ev.preventDefault(); ev.stopPropagation()
-  const hEl = canvasWrap.querySelector(`.hot-circle[data-id="${hid}"]`)
-  if(!hEl) return
+  const hEl = canvasWrap.querySelector(`.hot-circle[data-id="${hid}"]`); if(!hEl) return
   const startX = ev.clientX, startW = hEl.offsetWidth
   resizing = { hid, hEl, startX, startW }
   function onMove(e){
@@ -431,167 +475,101 @@ function startResize(ev, hid){
   }
   function onUp(){
     if(!resizing) return
-    const hidf = resizing.hid, el = resizing.hEl
-    const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
-    const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save()
-    resizing = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); renderHotspots()
+    const hidf = resizing.hid, el2 = resizing.hEl
+    const imgObj = store.images.find(x=>x.id===selectedImageId); const hh = imgObj.hotspots.find(x=>x.id===hidf)
+    const size = el2.offsetWidth; hh.r_frac = (size/2)/mainImage.width; save()
+    resizing=null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); renderHotspots()
   }
   window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
 }
+/* RESIZE touch */
+function startResizeTouch(ev, hid){
+  ev.preventDefault(); ev.stopPropagation()
+  const touch = ev.touches[0]; if(!touch) return
+  const hEl = canvasWrap.querySelector(`.hot-circle[data-id="${hid}"]`); if(!hEl) return
+  const startX = touch.clientX, startW = hEl.offsetWidth
+  resizing = { hid, hEl, startX, startW }
+  function onMove(e){
+    const t = e.touches[0]; if(!t) return
+    const dx = t.clientX - resizing.startX; let newW = Math.max(10, resizing.startW + dx); newW = Math.min(newW, mainImage.width)
+    resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
+  }
+  function onEnd(){
+    if(!resizing) return
+    const hidf = resizing.hid, el2 = resizing.hEl
+    const imgObj = store.images.find(x=>x.id===selectedImageId); const hh = imgObj.hotspots.find(x=>x.id===hidf)
+    const size = el2.offsetWidth; hh.r_frac = (size/2)/mainImage.width; save()
+    resizing=null; window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); renderHotspots()
+  }
+  window.addEventListener('touchmove', onMove, {passive:false}); window.addEventListener('touchend', onEnd)
+}
 
-/* SHARE LINK - include all images (data URLs already) */
+/* SHARE LINK */
 btnCreateLink.addEventListener('click', ()=>{
-  if(store.images.length === 0) return alert('Keine Bilder vorhanden')
-  btnCreateLink.disabled = true; btnCreateLink.textContent = 'Erstelle...'
+  if(store.images.length===0) return alert('Keine Bilder vorhanden')
+  btnCreateLink.disabled=true; btnCreateLink.textContent='Erstelle...'
   try{
-    const imagesOut = store.images.map(img=>({ id: img.id, name: img.name, data: img.data, hotspots: img.hotspots }))
+    const imagesOut = store.images.map(img=>({id:img.id, name:img.name, data:img.data, hotspots:img.hotspots}))
     const payload = { images: imagesOut }
     const s = JSON.stringify(payload)
     const b64 = b64EncodeUnicode(s)
     const link = location.origin + location.pathname + '#quiz=' + b64
     linkBox.value = link
-    // also focus & select for quick copy
-    linkBox.select(); linkBox.setSelectionRange(0, linkBox.value.length)
+    linkBox.select(); linkBox.setSelectionRange(0,linkBox.value.length)
   }catch(err){ alert('Fehler beim Erstellen: ' + (err && err.message ? err.message : err)) }
-  finally{ btnCreateLink.disabled = false; btnCreateLink.textContent = 'Share-Link erstellen' }
+  finally{ btnCreateLink.disabled=false; btnCreateLink.textContent='Share-Link erstellen' }
 })
 btnCopyLink.addEventListener('click', ()=>{ if(!linkBox.value) return alert('Kein Link erstellt'); navigator.clipboard.writeText(linkBox.value).then(()=>alert('Link kopiert')).catch(()=>alert('Kopieren fehlgeschlagen')) })
 
-/* --- QUIZ logic --- */
-/* Flow: URL with #quiz=base64 -> start quiz.
-   Quiz shows current term, list of all terms, thumbnails of images.
-   Player selects image; if correct image selected, show large image and await hotspot click.
-   Hotspots are invisible during quiz.
-   Wrong answers are collected and replayed.
-*/
-
+/* QUIZ logic (same as before) */
 function checkUrl(){
   const h = location.hash || ''
   if(!h.startsWith('#quiz=')) return false
-  try{
-    const b64 = h.slice(6)
-    const json = b64DecodeUnicode(b64)
-    const obj = JSON.parse(json)
-    if(obj && obj.images){ startQuizFromPayload(obj); return true }
-  }catch(e){ console.error('Invalid quiz payload', e); return false }
+  try{ const b64 = h.slice(6); const json = b64DecodeUnicode(b64); const obj = JSON.parse(json); if(obj && obj.images){ startQuizFromPayload(obj); return true } }catch(e){ console.error('Invalid payload', e); return false }
   return false
 }
-
 function startQuizFromPayload(obj){
-  editorPanel.style.display = 'none'; document.querySelector('footer').style.display='none'
-  quizOnlyView.style.display = 'block'
-  const items = []
-  // items: {imageIndex, imageData, imageName, hotspot}
-  obj.images.forEach((img, idx)=>{
-    (img.hotspots||[]).forEach(h=> items.push({ imageIndex: idx, imageData: img.data, imageName: img.name, hotspot: h }))
-  })
-  if(items.length === 0){ alert('Keine Hotspots im Quiz-Payload'); return }
-  shuffleArray(items)
-  window.quiz = { items, index: 0, missed: [] }
-  buildQuizThumbnails(obj.images)
-  loadQuizItem()
+  editorPanel.style.display='none'; document.querySelector('footer').style.display='none'; quizOnlyView.style.display='block'
+  const items=[]
+  obj.images.forEach((img, idx)=>{ (img.hotspots||[]).forEach(h=> items.push({imageIndex:idx,imageData:img.data,imageName:img.name,hotspot:h})) })
+  if(items.length===0){ alert('Keine Hotspots vorhanden'); return }
+  shuffleArray(items); window.quiz={items, index:0, missed:[]}; buildQuizThumbnails(obj.images); loadQuizItem()
 }
-
 function buildQuizThumbnails(images){
-  quizThumbs.innerHTML = ''
-  images.forEach((img, idx)=>{
-    const t = document.createElement('img'); t.src = img.data; t.className='quiz-thumb'; t.dataset.idx = idx
-    t.addEventListener('click', ()=> onQuizThumbClick(idx))
-    quizThumbs.appendChild(t)
-  })
-  // show all terms row (for orientation)
+  quizThumbs.innerHTML=''; images.forEach((img, idx)=>{ const t=document.createElement('img'); t.src=img.data; t.className='quiz-thumb'; t.dataset.idx=idx; t.addEventListener('click', ()=> onQuizThumbClick(idx)); quizThumbs.appendChild(t) })
   updateAllTermsRow()
 }
-
-function updateAllTermsRow(){
-  allTermsRow.innerHTML = ''
-  if(!window.quiz) return
-  const labels = window.quiz.items.map(it => it.hotspot.label)
-  const uniq = Array.from(new Set(labels))
-  for(const l of uniq){
-    const p = document.createElement('div'); p.className='term-pill'; p.textContent = l
-    allTermsRow.appendChild(p)
-  }
-}
-
-/* display current term and clear state */
+function updateAllTermsRow(){ allTermsRow.innerHTML=''; if(!window.quiz) return; const labels = window.quiz.items.map(it=>it.hotspot.label); const uniq = Array.from(new Set(labels)); for(const l of uniq){ const p=document.createElement('div'); p.className='term-pill'; p.textContent=l; allTermsRow.appendChild(p)} }
 function loadQuizItem(){
-  const q = window.quiz; if(!q) return
-  if(q.index >= q.items.length){
-    if(q.missed.length > 0){
-      q.items = q.missed.slice(); q.missed = []; q.index = 0; quizFeedback.innerHTML = '<div class="message bad">Nochmal: falsch beantwortete Begriffe</div>'
-      setTimeout(()=>{ quizFeedback.innerHTML=''; loadQuizItem() }, 900); return
-    } else {
-      quizFeedback.innerHTML = '<div class="message ok">Alle Begriffe richtig! Gut gemacht.</div>'; quizTerm.textContent = 'Fertig'; progressBox.textContent = ''
-      return
-    }
+  const q=window.quiz; if(!q) return
+  if(q.index>=q.items.length){
+    if(q.missed.length>0){ q.items=q.missed.slice(); q.missed=[]; q.index=0; quizFeedback.innerHTML='<div class="message bad">Nochmal: falsch beantwortete Begriffe</div>'; setTimeout(()=>{ quizFeedback.innerHTML=''; loadQuizItem() },900); return }
+    else { quizFeedback.innerHTML='<div class="message ok">Alle Begriffe richtig!</div>'; quizTerm.textContent='Fertig'; progressBox.textContent=''; return }
   }
-  const item = q.items[q.index]
-  quizTerm.textContent = item.hotspot.label || 'Begriff'
-  quizImage.src = '' // wait until user selects thumbnail
-  progressBox.textContent = `${q.index+1} / ${q.items.length}`
-  quizFeedback.innerHTML = ''
-  // visually clear thumbnail selection
-  Array.from(quizThumbs.children).forEach(t=> t.classList.remove('selected'))
+  const item=q.items[q.index]; quizTerm.textContent=item.hotspot.label||'Begriff'; quizImage.src=''; progressBox.textContent=`${q.index+1} / ${q.items.length}`; quizFeedback.innerHTML=''; Array.from(quizThumbs.children).forEach(t=>t.classList.remove('selected'))
 }
-
-/* When user clicks a thumbnail in quiz */
 function onQuizThumbClick(idx){
-  const q = window.quiz; if(!q) return
-  const item = q.items[q.index]
-  // highlight clicked thumb
-  Array.from(quizThumbs.children).forEach(t=> t.classList.remove('selected'))
-  const selectedThumb = Array.from(quizThumbs.children).find(t=> Number(t.dataset.idx) === idx)
-  if(selectedThumb) selectedThumb.classList.add('selected')
-  if(idx !== item.imageIndex){
-    // wrong image
-    quizFeedback.innerHTML = '<div class="message bad">Falsches Bild — wird am Ende wiederholt.</div>'
-    q.missed.push(item); q.index++; setTimeout(()=> loadQuizItem(), 900); return
-  }
-  // correct image: show large image and wait for hotspot click
+  const q=window.quiz; if(!q) return
+  const item=q.items[q.index]; Array.from(quizThumbs.children).forEach(t=>t.classList.remove('selected'))
+  const sel = Array.from(quizThumbs.children).find(t=>Number(t.dataset.idx)===idx); if(sel) sel.classList.add('selected')
+  if(idx !== item.imageIndex){ quizFeedback.innerHTML='<div class="message bad">Falsches Bild — wird am Ende wiederholt.</div>'; q.missed.push(item); q.index++; setTimeout(()=>loadQuizItem(),900); return }
   quizImage.src = item.imageData; quizFeedback.innerHTML = '<div class="message">Jetzt den richtigen Bereich auf dem Bild antippen.</div>'
-  // user must click hotspot on this image
-  // attach handler for clicks on quizImage
 }
-
-/* click handler on quiz canvas -> check hotspot */
 const quizCanvas = document.getElementById('quizCanvas')
 quizCanvas.addEventListener('click', ev=>{
-  const q = window.quiz; if(!q) return
-  const item = q.items[q.index]
-  if(!item || !quizImage.src) return
-  const rect = quizImage.getBoundingClientRect()
-  const mx = ev.clientX - rect.left, my = ev.clientY - rect.top
-  // coordinates relative to displayed image size
-  const imgW = quizImage.width, imgH = quizImage.height
-  const h = item.hotspot
-  let hit = false
-  if(h && h.cx !== undefined){
-    const cx = h.cx * imgW, cy = h.cy * imgH, rr = h.r_frac * imgW
-    const dx = mx - cx, dy = my - cy
-    hit = (dx*dx + dy*dy) <= (rr*rr)
-  }
-  if(hit){
-    quizFeedback.innerHTML = '<div class="message ok">Richtig!</div>'; q.index++; setTimeout(()=>loadQuizItem(), 700)
-  } else {
-    quizFeedback.innerHTML = '<div class="message bad">Falsch — wird am Ende wiederholt.</div>'; q.missed.push(item); q.index++; setTimeout(()=>loadQuizItem(), 700)
-  }
+  const q=window.quiz; if(!q) return; const item=q.items[q.index]; if(!item || !quizImage.src) return
+  const rect=quizImage.getBoundingClientRect(), mx=ev.clientX-rect.left, my=ev.clientY-rect.top
+  const imgW=quizImage.width, imgH=quizImage.height, h=item.hotspot
+  let hit=false
+  if(h && h.cx!==undefined){ const cx=h.cx*imgW, cy=h.cy*imgH, rr=h.r_frac*imgW; const dx=mx-cx, dy=my-cy; hit=(dx*dx+dy*dy)<=(rr*rr) }
+  if(hit){ quizFeedback.innerHTML='<div class="message ok">Richtig!</div>'; q.index++; setTimeout(()=>loadQuizItem(),700) }
+  else { quizFeedback.innerHTML='<div class="message bad">Falsch — wird am Ende wiederholt.</div>'; q.missed.push(item); q.index++; setTimeout(()=>loadQuizItem(),700) }
 })
+btnRestartQuiz.addEventListener('click', ()=>{ if(window.quiz){ window.quiz.index=0; window.quiz.missed=[]; shuffleArray(window.quiz.items); loadQuizItem() } })
+function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } }
 
-btnRestartQuiz.addEventListener('click', ()=>{
-  if(window.quiz){ window.quiz.index = 0; window.quiz.missed = []; shuffleArray(window.quiz.items); loadQuizItem() }
-})
-
-function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } }
-
-/* check hash on load */
-if(!checkUrl()){
-  // normal editor view
-  quizOnlyView.style.display = 'none'
-}
-
-/* cleanup not strictly needed */
-/* End of script */
+/* init: start quiz if link present */
+if(!checkUrl()){ quizOnlyView.style.display='none' }
 </script>
 </body>
 </html>
