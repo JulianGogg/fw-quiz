@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Hotspot-Editor — mit Share-Link & Quiz</title>
+<title>Hotspot-Editor — Share & Quiz (fixed)</title>
 <style>
   :root{--accent:#2563eb}
   body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;padding:18px;background:#f7fafc;color:#0f172a}
@@ -40,8 +40,8 @@
 <body>
 <div class="wrap" id="appWrap">
   <header>
-    <h1>Hotspot-Editor — mit Share-Link & Quiz</h1>
-    <div class="muted">Erstelle Hotspots (Kreise). Erzeuge einen Share-Link — andere öffnen denselben HTML-File mit dem Link und spielen das Quiz.</div>
+    <h1>Hotspot-Editor — Share & Quiz (fixed)</h1>
+    <div class="muted">Klicke in ein Bild → Hotspot. Doppelklick auf Hotspot → Dialog (Name / Radius / Löschen).</div>
   </header>
 
   <div id="editorPanel" class="panel cols">
@@ -66,13 +66,13 @@
       <hr style="margin:12px 0">
       <div><strong>3) Hotspot (Workflow)</strong></div>
       <div style="margin-top:8px">
-        <div class="muted">Klicke ins Bild → Hotspot. Einmal klicken markiert; ziehe am Rand zum Resize. Doppelklick öffnet Dialog (Name, Radius, Löschen).</div>
+        <div class="muted">Klicke ins Bild → Hotspot. Einmal klicken markiert; ziehe am Rand zum Resize. Doppelklick öffnet Dialog.</div>
       </div>
 
       <hr style="margin:12px 0">
       <div><strong>4) Export / Teilen</strong></div>
       <div style="margin-top:8px">
-        <div style="margin-bottom:8px">Erstellt einen Link, den du teilen kannst. Dieser Link enthält die Bilddaten (als Data-URLs) und alle Hotspot-Metadaten — kein Server nötig.</div>
+        <div style="margin-bottom:8px">Erstellt einen Link mit allen Bilddaten (Data-URLs) + Hotspots — kein Server nötig.</div>
         <button id="btnCreateLink" class="btn">Share-Link erstellen</button>
         <button id="btnCopyLink" class="link-btn">Link kopieren</button>
         <input id="linkBox" type="text" readonly style="margin-top:8px;padding:8px;border:1px solid #eef2f7;border-radius:6px;width:100%" />
@@ -88,6 +88,7 @@
       </div>
     </div>
   </div>
+
   <!-- quiz view -->
   <div id="quizOnlyView" class="panel" style="margin-top:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -106,17 +107,17 @@
     <div id="quizFeedback" style="margin-top:8px"></div>
   </div>
 
-</div> <!-- END .wrap -->
+</div>
 
 <!-- Modal for editing hotspot -->
 <div id="editModal" class="modal-backdrop" style="display:none">
-  <div id="modalContent" class="modal">
-    <h3>Hotspot bearbeiten</h3>
-    <label>Name</label>
+  <div id="modalContent" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">Hotspot bearbeiten</h3>
+    <label for="modalName">Name</label>
     <input id="modalName" type="text" />
     <div class="row">
       <div style="flex:1">
-        <label>Radius (px)</label>
+        <label for="modalRadius">Radius (px)</label>
         <input id="modalRadius" type="number" min="4" />
       </div>
     </div>
@@ -127,20 +128,14 @@
     </div>
   </div>
 </div>
-<script>
-/* Fixed upload/display: store images as data URLs (persistent) to ensure thumbnails
-   and main image always show. Keeps share/quiz features.
-*/
 
-const LS = 'hotspot_share_quiz_v1_fixed'
+<script>
+/* Single-file editor with reliable dblclick and share link. */
+const LS = 'hotspot_share_quiz_fixed_v1'
 let store = { images: [] }
 let selectedImageId = null
 let selectedHotId = null
-
-// drag/resize state
-let maybeDrag = null
-let dragging = null
-let resizing = null
+let maybeDrag = null, dragging = null, resizing = null
 
 // UI refs
 const fileInput = document.getElementById('fileInput')
@@ -172,50 +167,31 @@ const modalCancel = document.getElementById('modalCancel')
 const modalDelete = document.getElementById('modalDelete')
 const modalSave = document.getElementById('modalSave')
 
-// load/save
+// load & save
 function load(){
   const s = localStorage.getItem(LS)
   if(!s){ store = {images:[]} ; return }
   try{ store = JSON.parse(s) }catch(e){ store = {images:[]} }
 }
 function save(){
-  try{
-    localStorage.setItem(LS, JSON.stringify(store))
-  }catch(e){
-    alert('Speichern fehlgeschlagen — vermutlich zu große Bilder für localStorage.')
-  }
+  try{ localStorage.setItem(LS, JSON.stringify(store)) }
+  catch(e){ alert('Speichern fehlgeschlagen — vermutlich zu große Bilder für localStorage.') }
 }
-load();
+load()
 renderImageList()
 
-function genId(p='id'){ return p+'_'+Math.random().toString(36).slice(2,9) }
-function escapeHtml(s){
-  return String(s||'')
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;')
-}
-function fileToDataURL(file){
-  return new Promise(res=>{
-    const r=new FileReader()
-    r.onload=()=>res(r.result)
-    r.readAsDataURL(file)
-  })
-}
+function genId(p='id'){ return p + '_' + Math.random().toString(36).slice(2,9) }
+function escapeHtml(s){ return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
+function fileToDataURL(file){ return new Promise((res,rej)=>{ const r = new FileReader(); r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(file) }) }
 
-// upload handler
+// upload — convert file to dataURL and store (persistent)
 fileInput.addEventListener('change', async ev=>{
   const files = Array.from(ev.target.files || [])
-  if(files.length===0) return
+  if(files.length === 0) return
   for(const f of files){
     try{
       const data = await fileToDataURL(f)
-      store.images.push({
-        id: genId('img'),
-        name: f.name,
-        data,
-        hotspots: []
-      })
+      store.images.push({ id: genId('img'), name: f.name, data, hotspots: [] })
     }catch(e){ console.error('fileToDataURL failed', e) }
   }
   save()
@@ -225,31 +201,22 @@ fileInput.addEventListener('change', async ev=>{
 
 function renderImageList(){
   imageList.innerHTML = ''
-  if(store.images.length===0){
+  if(store.images.length === 0){
     imageList.innerHTML = '<div class="muted" style="margin-top:8px">Noch keine Bilder hochgeladen</div>'
     return
   }
   store.images.forEach(img=>{
-    const d = document.createElement('div')
-    d.className='thumb'
-    d.innerHTML = `
-      <img src="${img.data}">
-      <div style="flex:1">
-        <strong>${escapeHtml(img.name)}</strong>
-        <div class="muted">${img.hotspots.length} Hotspots</div>
-      </div>`
+    const d = document.createElement('div'); d.className = 'thumb'
+    d.innerHTML = `<img src="${img.data}" alt="${escapeHtml(img.name)}"><div style="flex:1"><strong>${escapeHtml(img.name)}</strong><div class="muted">${img.hotspots.length} Hotspots</div></div>`
     d.addEventListener('click', ()=> selectImage(img.id))
     imageList.appendChild(d)
-  });
+  })
 }
 
 function selectImage(id){
-  selectedImageId = id
-  selectedHotId = null
-  const img = store.images.find(x=>x.id===id)
-  if(!img) return
-  mainImage.src = img.data
-  imageName.value = img.name || ''
+  selectedImageId = id; selectedHotId = null
+  const img = store.images.find(x=>x.id===id); if(!img) return
+  mainImage.src = img.data; imageName.value = img.name || ''
   mainImage.onload = ()=> renderHotspots()
   if(mainImage.complete) renderHotspots()
 }
@@ -258,53 +225,51 @@ btnSaveName.addEventListener('click', ()=>{
   if(!selectedImageId) return alert('Kein Bild ausgewählt')
   const img = store.images.find(x=>x.id===selectedImageId)
   img.name = imageName.value || img.name
-  save()
-  renderImageList()
-  alert('Bildname gespeichert')
+  save(); renderImageList(); alert('Bildname gespeichert')
 })
 
 btnDeleteImage.addEventListener('click', ()=>{
   if(!selectedImageId) return alert('Kein Bild ausgewählt')
   if(!confirm('Bild löschen?')) return
   store.images = store.images.filter(x=>x.id!==selectedImageId)
-  selectedImageId=null
-  save()
-  renderImageList()
-  mainImage.src=''
+  selectedImageId = null; selectedHotId = null
+  save(); renderImageList(); mainImage.src = ''
 })
-// create hotspot on click
+
+// create hotspot on click (ignore if dragging/resizing)
 mainImage.addEventListener('click', ev=>{
   if(!selectedImageId) return
   if(dragging || resizing) return
   const rect = mainImage.getBoundingClientRect()
-  const x = ev.clientX - rect.left
-  const y = ev.clientY - rect.top
+  const x = ev.clientX - rect.left, y = ev.clientY - rect.top
   const img = store.images.find(x=>x.id===selectedImageId)
   const rpx = Math.max(8, (mainImage.width || 400) * 0.06)
   const hot = { id: genId('hot'), cx: x / mainImage.width, cy: y / mainImage.height, r_frac: rpx / mainImage.width, label: 'Begriff' }
-  img.hotspots.push(hot)
-  save()
-  renderHotspots()
+  img.hotspots.push(hot); save(); renderHotspots()
 })
 
-// render hotspots + grip
+// render hotspots with resize grip for selected
 function renderHotspots(){
+  // remove previous overlay elements
   Array.from(canvasWrap.querySelectorAll('.hot-circle, .resize-grip')).forEach(n=>n.remove())
   if(!selectedImageId) return
-  const img = store.images.find(x=>x.id===selectedImageId)
-  if(!img) return
-  if(!mainImage.complete || mainImage.naturalWidth===0) return
+  const img = store.images.find(x=>x.id===selectedImageId); if(!img) return
+  if(!mainImage.complete || mainImage.naturalWidth === 0) return
   img.hotspots.forEach(h=>{
     const left = h.cx * mainImage.width - h.r_frac * mainImage.width
-    const top  = h.cy * mainImage.height - h.r_frac * mainImage.width
+    const top = h.cy * mainImage.height - h.r_frac * mainImage.width
     const size = h.r_frac * mainImage.width * 2
-    const el = document.createElement('div'); el.className='hot-circle'; el.dataset.id = h.id
+    const el = document.createElement('div'); el.className = 'hot-circle'; el.dataset.id = h.id
     el.style.left = left + 'px'; el.style.top = top + 'px'; el.style.width = size + 'px'; el.style.height = size + 'px'
-    el.addEventListener('click', ev=>{ ev.stopPropagation(); selectedHotId = h.id; renderHotspots() })
-    el.addEventListener('dblclick', ev=>{ ev.stopPropagation(); openEditDialog(h.id) })
-    el.addEventListener('mousedown', ev=>{ if(ev.button!==0) return; startMaybeDragOrResize(ev, h.id) })
+    // click -> select
+    el.addEventListener('click', e=>{ e.stopPropagation(); selectedHotId = h.id; renderHotspots() })
+    // dblclick -> open modal (reliable)
+    el.addEventListener('dblclick', e=>{ e.stopPropagation(); openEditDialog(h.id) })
+    // mousedown -> start maybe drag/resize
+    el.addEventListener('mousedown', ev=>{ if(ev.button !== 0) return; startMaybeDragOrResize(ev, h.id) })
     if(selectedHotId === h.id) el.classList.add('selected')
     canvasWrap.appendChild(el)
+    // grip for resizing
     if(selectedHotId === h.id){
       const grip = document.createElement('div'); grip.className = 'resize-grip'; grip.dataset.hid = h.id
       grip.style.left = (left + size - 8) + 'px'; grip.style.top = (top + size/2 - 8) + 'px'
@@ -314,24 +279,35 @@ function renderHotspots(){
   })
 }
 
-// open editor modal
+// open modal for editing hotspot
 function openEditDialog(hid){
   if(!selectedImageId) return
-  const img = store.images.find(x=>x.id===selectedImageId)
+  const img = store.images.find(x=>x.id===selectedImageId); if(!img) return
   const h = img.hotspots.find(x=>x.id===hid); if(!h) return
   modalName.value = h.label || ''
   modalRadius.value = Math.round(h.r_frac * mainImage.width)
   editModal.style.display = 'flex'
+  // stop clicks from closing the modal when clicking inside
   modalContent.addEventListener('click', e=> e.stopPropagation())
-  modalName.addEventListener('dblclick', e=> e.stopPropagation())
-  modalRadius.addEventListener('dblclick', e=> e.stopPropagation())
-  modalCancel.onclick = ()=>{ editModal.style.display = 'none' }
-  modalSave.onclick = ()=>{ const newLabel = modalName.value || h.label; const newRpx = Math.max(4, Number(modalRadius.value) || 8); h.label = newLabel; h.r_frac = newRpx / mainImage.width; save(); editModal.style.display = 'none'; renderHotspots() }
-  modalDelete.onclick = ()=>{ if(!confirm('Hotspot wirklich löschen?')) return; img.hotspots = img.hotspots.filter(x=>x.id!==hid); selectedHotId = null; save(); editModal.style.display='none'; renderHotspots() }
+  // handlers
+  modalCancel.onclick = ()=> { editModal.style.display = 'none' }
+  modalSave.onclick = ()=> {
+    const newLabel = modalName.value || h.label
+    const newRpx = Math.max(4, Number(modalRadius.value) || 8)
+    h.label = newLabel
+    h.r_frac = newRpx / mainImage.width
+    save(); editModal.style.display = 'none'; renderHotspots()
+  }
+  modalDelete.onclick = ()=> {
+    if(!confirm('Hotspot wirklich löschen?')) return
+    img.hotspots = img.hotspots.filter(x=>x.id !== hid)
+    selectedHotId = null; save(); editModal.style.display = 'none'; renderHotspots()
+  }
 }
-editModal.addEventListener('click', ()=>{ editModal.style.display = 'none' })
+// clicking backdrop closes modal
+editModal.addEventListener('click', ()=> { editModal.style.display = 'none' })
 
-// DRAG/RESIZE logic
+// DRAG / RESIZE logic (startMaybeDragOrResize with 6px movement threshold)
 function startMaybeDragOrResize(ev, hid){
   ev.preventDefault(); ev.stopPropagation()
   const el = ev.currentTarget
@@ -342,7 +318,7 @@ function startMaybeDragOrResize(ev, hid){
   const pageCenterX = canvasWrap.getBoundingClientRect().left + centerX
   const pageCenterY = canvasWrap.getBoundingClientRect().top + centerY
   const distToCenter = Math.hypot(ev.clientX - pageCenterX, ev.clientY - pageCenterY)
-  const radiusPx = origW/2; const edgeThreshold = 12
+  const radiusPx = origW/2, edgeThreshold = 12
   const isNearEdge = Math.abs(distToCenter - radiusPx) <= edgeThreshold
   maybeDrag = { hid, el, startX, startY, origLeft, origTop, origW, moved:false, mode: isNearEdge ? 'maybeResize' : 'maybeMove', centerX, centerY }
 
@@ -360,8 +336,9 @@ function startMaybeDragOrResize(ev, hid){
     }
     if(maybeDrag.moved){
       if(maybeDrag.mode === 'maybeResize' && resizing){
-        const cX = canvasWrap.getBoundingClientRect().left + maybeDrag.centerX
-        const cY = canvasWrap.getBoundingClientRect().top + maybeDrag.centerY
+        const cRect = canvasWrap.getBoundingClientRect()
+        const cX = cRect.left + maybeDrag.centerX
+        const cY = cRect.top + maybeDrag.centerY
         const curDist = Math.hypot(e.clientX - cX, e.clientY - cY)
         let newW = Math.max(8, curDist*2); newW = Math.min(newW, mainImage.width)
         resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
@@ -381,14 +358,14 @@ function startMaybeDragOrResize(ev, hid){
     }
   }
 
-  function onUp(e){
+  function onUp(){
     if(maybeDrag && maybeDrag.moved){
       if(maybeDrag.mode === 'maybeResize' && resizing){
-        const hidf = resizing.hid; const el = resizing.hEl
+        const hidf = resizing.hid, el = resizing.hEl
         const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
         const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save()
       } else if(dragging){
-        const hidf = dragging.hid; const el = dragging.el
+        const hidf = dragging.hid, el = dragging.el
         const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
         const size = el.offsetWidth; h.cx = (parseFloat(el.style.left) + size/2) / mainImage.width; h.cy = (parseFloat(el.style.top) + size/2) / mainImage.height; save()
       }
@@ -403,165 +380,109 @@ function startMaybeDragOrResize(ev, hid){
 
 function startResize(ev, hid){
   ev.preventDefault(); ev.stopPropagation()
-  const grip = ev.currentTarget
   const hEl = canvasWrap.querySelector(`.hot-circle[data-id="${hid}"]`)
   if(!hEl) return
-  const startX = ev.clientX; const startW = hEl.offsetWidth
-  resizing = {hid, hEl, startX, startW}
+  const startX = ev.clientX, startW = hEl.offsetWidth
+  resizing = { hid, hEl, startX, startW }
   function onMove(e){
     if(!resizing) return
     const dx = e.clientX - resizing.startX
     let newW = Math.max(8, resizing.startW + dx); newW = Math.min(newW, mainImage.width)
     resizing.hEl.style.width = newW + 'px'; resizing.hEl.style.height = newW + 'px'
-    const left = parseFloat(resizing.hEl.style.left); const top = parseFloat(resizing.hEl.style.top)
+    const left = parseFloat(resizing.hEl.style.left), top = parseFloat(resizing.hEl.style.top)
     const gripEl = canvasWrap.querySelector(`.resize-grip[data-hid="${resizing.hid}"]`)
     if(gripEl){ gripEl.style.left = (left + newW - 8) + 'px'; gripEl.style.top = (top + newW/2 - 8) + 'px' }
   }
-  function onUp(e){
+  function onUp(){
     if(!resizing) return
-    const hidf = resizing.hid; const el = resizing.hEl
+    const hidf = resizing.hid, el = resizing.hEl
     const img = store.images.find(x=>x.id===selectedImageId); const h = img.hotspots.find(x=>x.id===hidf)
     const size = el.offsetWidth; h.r_frac = (size/2) / mainImage.width; save()
-    resizing = null
-    window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
-    renderHotspots()
+    resizing = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); renderHotspots()
   }
   window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
 }
-// create share link (data URLs already stored in `store.images`)
-btnCreateLink.addEventListener('click', async ()=>{
-  if(store.images.length===0) return alert('Keine Bilder vorhanden')
+
+// Share link creation (images stored as data URLs already)
+btnCreateLink.addEventListener('click', ()=>{
+  if(store.images.length === 0) return alert('Keine Bilder vorhanden')
   btnCreateLink.disabled = true; btnCreateLink.textContent = 'Erstelle...'
   try{
     const imagesOut = store.images.map(img=>({ id: img.id, name: img.name, data: img.data, hotspots: img.hotspots }))
     const payload = { images: imagesOut }
     const s = JSON.stringify(payload)
-    const b64 = btoa(unescape(encodeURIComponent(s)))
+    const b64 = btoa(encodeURIComponent(s))
     const link = location.origin + location.pathname + '#quiz=' + b64
     linkBox.value = link
   }catch(e){
-    alert('Fehler beim Erstellen: '+e.message)
+    alert('Fehler beim Erstellen: ' + (e && e.message ? e.message : e))
+  } finally {
+    btnCreateLink.disabled = false; btnCreateLink.textContent = 'Share-Link erstellen'
   }
-  btnCreateLink.disabled = false; btnCreateLink.textContent = 'Share-Link erstellen'
 })
 
 btnCopyLink.addEventListener('click', ()=>{
   if(!linkBox.value) return alert('Kein Link erstellt')
-  navigator.clipboard.writeText(linkBox.value).then(()=>alert('Link kopiert'))
+  navigator.clipboard.writeText(linkBox.value).then(()=>alert('Link kopiert')).catch(()=>alert('Kopieren fehlgeschlagen — bitte manuell kopieren.'))
 })
 
-// ----- quiz handling when page opened with #quiz=... -----
+// Quiz handling: if URL hash contains #quiz=BASE64 payload -> start quiz
 function checkUrl(){
   const h = location.hash || ''
-  if(h.startsWith('#quiz=')){
-    try{
-      const b64 = h.slice(6)
-      const json = decodeURIComponent(escape(atob(b64)))
-      const obj = JSON.parse(json)
-      if(obj && obj.images){
-        startQuizFromPayload(obj)
-        return true
-      }
-    }catch(e){ console.error('Invalid quiz payload', e) }
-  }
+  if(!h.startsWith('#quiz=')) return false
+  try{
+    const b64 = h.slice(6)
+    const json = decodeURIComponent(atob(b64))
+    const obj = JSON.parse(json)
+    if(obj && obj.images) { startQuizFromPayload(obj); return true }
+  }catch(e){ console.error('Invalid quiz payload', e); return false }
   return false
 }
 
 function startQuizFromPayload(obj){
-  // hide editor, show quiz
-  editorPanel.style.display = 'none'
-  quizOnlyView.style.display = 'block'
-  // build quiz items: each hotspot is one item
+  editorPanel.style.display = 'none'; quizOnlyView.style.display = 'block'
   const items = []
-  obj.images.forEach(img=>{
-    (img.hotspots||[]).forEach(h=>{
-      items.push({ imageData: img.data, imageName: img.name, hotspot: h })
-    })
-  })
-  shuffleArray(items)
-  window.quiz = { items, index: 0, missed: [] }
-  loadQuizItem()
+  obj.images.forEach(img=>{ (img.hotspots||[]).forEach(h=> items.push({ imageData: img.data, imageName: img.name, hotspot: h })) })
+  shuffleArray(items); window.quiz = { items, index: 0, missed: [] }; loadQuizItem()
 }
 
 function loadQuizItem(){
-  const q = window.quiz
-  if(!q) return
+  const q = window.quiz; if(!q) return
   if(q.index >= q.items.length){
-    if(q.missed.length > 0){
-      // replay missed
-      q.items = q.missed.slice()
-      q.missed = []
-      q.index = 0
-      quizFeedback.innerHTML = '<div class="message bad">Nochmals: falsch beantwortete Begriffe</div>'
-      setTimeout(()=>{ quizFeedback.innerHTML=''; loadQuizItem() }, 700)
-      return
-    } else {
-      quizFeedback.innerHTML = '<div class="message ok">Alle Begriffe richtig!</div>'
-      termBox.textContent = 'Fertig'
-      progressBox.textContent = ''
-      return
-    }
+    if(q.missed.length > 0){ q.items = q.missed.slice(); q.missed = []; q.index = 0; quizFeedback.innerHTML = '<div class="message bad">Nochmals: falsch beantwortete Begriffe</div>'; setTimeout(()=>{ quizFeedback.innerHTML=''; loadQuizItem() },700); return }
+    else { quizFeedback.innerHTML = '<div class="message ok">Alle Begriffe richtig!</div>'; termBox.textContent = 'Fertig'; progressBox.textContent = ''; return }
   }
-  const item = q.items[q.index]
-  termBox.textContent = item.hotspot.label || 'Begriff'
-  quizImage.src = item.imageData
-  quizImage.onload = ()=>{ progressBox.textContent = `${q.index+1} / ${q.items.length}` }
+  const item = q.items[q.index]; termBox.textContent = item.hotspot.label || 'Begriff'; quizImage.src = item.imageData
+  quizImage.onload = ()=> { progressBox.textContent = `${q.index+1} / ${q.items.length}` }
   quizFeedback.innerHTML = ''
 }
 
-// clicking on quiz image checks hit
 const quizCanvas = document.getElementById('quizCanvas')
 quizCanvas.addEventListener('click', ev=>{
-  const q = window.quiz
-  if(!q) return
-  const item = q.items[q.index]
-  const rect = quizImage.getBoundingClientRect()
-  const mx = ev.clientX - rect.left
-  const my = ev.clientY - rect.top
-  const imgW = quizImage.width
+  const q = window.quiz; if(!q) return
+  const item = q.items[q.index]; const rect = quizImage.getBoundingClientRect()
+  const mx = ev.clientX - rect.left, my = ev.clientY - rect.top
+  const imgW = quizImage.width, imgH = quizImage.height
   const h = item.hotspot
   let hit = false
   if(h && h.cx !== undefined){
-    const cx = h.cx * imgW
-    const cy = h.cy * quizImage.height
-    const rr = h.r_frac * imgW
+    const cx = h.cx * imgW, cy = h.cy * imgH, rr = h.r_frac * imgW
     const dx = mx - cx, dy = my - cy
     hit = (dx*dx + dy*dy) <= (rr*rr)
   }
-  if(hit){
-    quizFeedback.innerHTML = '<div class="message ok">Richtig</div>'
-    q.index++
-    setTimeout(()=>loadQuizItem(), 600)
-  } else {
-    quizFeedback.innerHTML = '<div class="message bad">Falsch — erscheint erneut</div>'
-    q.missed.push(item)
-    q.index++
-    setTimeout(()=>loadQuizItem(), 700)
-  }
+  if(hit){ quizFeedback.innerHTML = '<div class="message ok">Richtig</div>'; q.index++; setTimeout(()=>loadQuizItem(),600) }
+  else { quizFeedback.innerHTML = '<div class="message bad">Falsch — erscheint erneut</div>'; q.missed.push(item); q.index++; setTimeout(()=>loadQuizItem(),700) }
 })
 
 btnRestartQuiz.addEventListener('click', ()=>{
-  if(window.quiz){
-    window.quiz.index = 0
-    window.quiz.missed = []
-    shuffleArray(window.quiz.items)
-    loadQuizItem()
-  }
+  if(window.quiz){ window.quiz.index = 0; window.quiz.missed = []; shuffleArray(window.quiz.items); loadQuizItem() }
 })
 
-function shuffleArray(a){
-  for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1))
-    ;[a[i],a[j]] = [a[j],a[i]]
-  }
-}
+function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } }
 
-// initial check: if URL has payload, start quiz
-if(!checkUrl()){
-  quizOnlyView.style.display = 'none'
-}
+// start quiz immediately if URL contains payload
+if(!checkUrl()){ quizOnlyView.style.display = 'none' }
 
-// --- end script and HTML ---
 </script>
 </body>
 </html>
